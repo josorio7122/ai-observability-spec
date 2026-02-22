@@ -58,7 +58,7 @@ Read in this order — each document builds on the previous:
 
 6. **[`specs/04-scoring.md`](./specs/04-scoring.md)** — Scorers: built-in (exact_match, contains, regex, llm_judge), human, custom, attachment methods.
 
-7. **[`specs/05-annotation.md`](./specs/05-annotation.md)** — Annotation: human review workflow, immutability rules, conversion to dataset items, UI contract.
+7. **[`specs/05-annotation.md`](./specs/05-annotation.md)** — Annotation: human review workflow, immutability rules, conversion to dataset items.
 
 8. **[`specs/06-api.md`](./specs/06-api.md)** — Full HTTP API contract: every endpoint, request/response schemas, error codes.
 
@@ -66,24 +66,73 @@ Read in this order — each document builds on the previous:
 
 ---
 
+## Using This Spec with an LLM
+
+This spec is designed to be fed directly to an AI coding agent. The structure is intentional: small reusable foundation files + independently consumable subsystem specs. This keeps context focused and reduces noise.
+
+### The Golden Rule
+
+**`CONSTITUTION.md` + `DATA-MODEL.md` are always in context.** They are small (~400 lines total) and every other file references them. Every prompt, every session, every agent invocation should include both.
+
+**The sub-specs are modular.** Each one (`01-tracing.md` through `07-ui.md`) is independently consumable. Include only the one relevant to the task at hand.
+
+### Context by Task
+
+| Task | Files to include |
+|---|---|
+| Implement tracing ingestion | `CONSTITUTION.md` + `DATA-MODEL.md` + `specs/01-tracing.md` |
+| Implement datasets | `CONSTITUTION.md` + `DATA-MODEL.md` + `specs/02-datasets.md` |
+| Implement experiments + scoring | `CONSTITUTION.md` + `DATA-MODEL.md` + `specs/03-experiments.md` + `specs/04-scoring.md` |
+| Implement annotation workflow | `CONSTITUTION.md` + `DATA-MODEL.md` + `specs/05-annotation.md` |
+| Implement full backend API | `CONSTITUTION.md` + `DATA-MODEL.md` + `specs/06-api.md` |
+| Implement the UI | `CONSTITUTION.md` + `DATA-MODEL.md` + `specs/06-api.md` + `specs/07-ui.md` |
+| Validate an existing implementation | Paste only the **Acceptance Criteria** section from the relevant spec file |
+| Add a new feature | Edit spec first → then `CONSTITUTION.md` + `DATA-MODEL.md` + the changed spec file |
+
+### Three Usage Patterns
+
+**Pattern 1 — One subsystem at a time (recommended)**
+
+Work through the specs in dependency order (`01 → 02 → 03 → 04 → 05 → 06 → 07`), implementing and validating each before moving to the next. Each subsystem is small enough that the LLM has full, focused context with no noise from unrelated subsystems.
+
+**Pattern 2 — API contract as the implementation target**
+
+Use `specs/06-api.md` as the sole implementation target for the full backend. The API spec is a complete HTTP contract — every endpoint, every shape, every error code. The behavioral sub-specs (`01`–`05`) then become your validation layer: after implementation, feed each sub-spec to the agent and ask it to verify compliance.
+
+**Pattern 3 — Spec-anchored iteration**
+
+The spec is a living document. For every change to the platform:
+1. Update the relevant spec file first
+2. Feed the updated spec + existing code to the agent: *"The spec has changed. Update the implementation to match."*
+3. Run the acceptance criteria as regression checks
+
+Never change the implementation without changing the spec first. The spec is the source of truth; code follows.
+
+### Validating Without Reimplementing
+
+The `GIVEN / WHEN / THEN` acceptance criteria in each spec file can be used as standalone validation prompts — no need to provide the full spec:
+
+```
+Here is an existing implementation of [endpoint/feature].
+Do these acceptance criteria all pass?
+For each one that fails, explain why and suggest a fix.
+
+[paste the Acceptance Criteria section from the relevant spec file]
+```
+
+This is the most efficient way to catch drift between spec and implementation over time.
+
+---
+
 ## How to Implement
 
-This spec is designed to be used as context for an AI coding agent. Each subsystem is independently implementable.
-
-**To implement a specific subsystem**, provide your agent with:
-1. `CONSTITUTION.md` — the rules that apply everywhere
-2. `DATA-MODEL.md` — the object shapes
-3. The relevant spec file (e.g., `specs/01-tracing.md`) — the behavioral contract
-
-**To implement the full platform**, provide your agent with all files in order.
-
-The acceptance criteria in each spec file are your tests. A compliant implementation must satisfy every `GIVEN / WHEN / THEN` scenario in every spec file.
+See **[`INSTALL.md`](./INSTALL.md)** for step-by-step instructions, technology recommendations, and ready-to-use prompts for every subsystem.
 
 ---
 
 ## How to Validate
 
-Each spec file contains an **Acceptance Criteria** section with `GIVEN / WHEN / THEN` scenarios. These are implementation-language-agnostic test specifications. A compliant implementation must:
+Each spec file contains an **Acceptance Criteria** section with `GIVEN / WHEN / THEN` scenarios. A compliant implementation must:
 
 - Pass every acceptance criterion in every spec file
 - Handle every edge case listed in the Edge Cases tables
@@ -96,8 +145,9 @@ Each spec file contains an **Acceptance Criteria** section with `GIVEN / WHEN / 
 ```
 ai-observability-spec/
 ├── README.md              ← You are here
-├── CONSTITUTION.md        ← Cross-cutting rules (read first)
-├── DATA-MODEL.md          ← Entity definitions (read second)
+├── INSTALL.md             ← How to implement: prompts and step-by-step guide
+├── CONSTITUTION.md        ← Cross-cutting rules (always include in context)
+├── DATA-MODEL.md          ← Entity definitions (always include in context)
 ├── specs/
 │   ├── 01-tracing.md
 │   ├── 02-datasets.md
