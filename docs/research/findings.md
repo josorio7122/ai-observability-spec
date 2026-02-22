@@ -1,6 +1,6 @@
 # Research Findings: Spec-Driven Development & AI Observability
 
-> This document captures research findings to preserve context for spec authoring. It covers (1) spec-driven development methodology and (2) AI observability platform features.
+> This document captures research findings to preserve context for spec authoring.
 
 ---
 
@@ -8,182 +8,215 @@
 
 ### What It Is
 
-Spec-Driven Development is a methodology where a **precise, human-readable specification is the primary artifact** — written before any code, serving as the source of truth throughout development, testing, and documentation.
+Spec-Driven Development is a development paradigm where **a well-crafted specification is written before code**, and that spec becomes the primary source of truth for humans, AI coding agents, tests, and documentation alike.
 
-The core shift: instead of code being the authoritative description of behavior, the **spec is**. Code is an implementation of the spec, not the other way around.
+The core idea: instead of describing an idea in vague prompts and hoping AI gets it right ("vibe-coding"), you define *what* the system should do — behaviors, edge cases, constraints, interface contracts — and then generate code from that. This produces more reliable, intentional implementations and prevents AI from optimizing for speed over correctness.
 
-### The `whenwords` Example (Reference Implementation)
+It is directly inspired by, but distinct from, TDD and BDD — both of which shaped its vocabulary (Given/When/Then, acceptance criteria, executable specs). What's new is the AI context: specs now serve as high-quality, structured prompts for autonomous coding agents.
 
-`whenwords` (https://github.com/dbreunig/whenwords) is the canonical minimal example:
-- A relative time formatting library with **zero code** in the repo
-- Contains only: `SPEC.md`, `tests.yaml`, `INSTALL.md`
-- `SPEC.md` — full behavioral specification (functions, edge cases, types, error handling)
-- `tests.yaml` — language-agnostic input/output test pairs any implementation must pass
-- `INSTALL.md` — a single prompt to paste into an AI to generate any implementation in any language
-- Result: works in Ruby, Python, Rust, Elixir, Swift, PHP, Bash, and even Excel — all from one spec
+### There Is No Single Definition — Three Levels Exist
 
-**Key insight:** The spec + tests are the product. Implementations are ephemeral artifacts.
+Thoughtworks researcher Birgitta Böckeler identified three distinct levels of SDD in practice (from Kiro, GitHub Spec-Kit, Tessl):
 
-### The 3-Phase Workflow
-
-```
-1. DEFINE   → Write the spec (what, why, behavior, constraints)
-2. IMPLEMENT → Build against the spec
-3. VALIDATE  → Automated checks ensure alignment with spec
-```
-
-The living spec evolves with the system. Each change touches the spec first.
-
-### Best Practices
-
-| Practice | Why It Matters |
+| Level | What it means |
 |---|---|
-| **Human reviewability first** | If you're skimming the spec thinking "AI probably got it right," it's too large |
-| **Start minimal** | Avoid long chains of "and" — concise specs prevent context window exhaustion |
-| **Decompose meaningfully** | Use INVEST/MoSCoW — slices should deliver value independently |
-| **Spec as source of truth** | Never let spec drift from implementation; continuous validation catches this |
-| **Pure functions, explicit inputs** | `whenwords` never touches the system clock — reference time is always passed explicitly |
-| **Language-agnostic tests** | `tests.yaml` format means tests outlive any implementation |
-| **No premature packaging** | Generate minimal files (source + tests + usage.md); skip CI/CD, gemspecs, etc. |
+| **Spec-first** | A spec is written before coding begins, used to guide a specific task, then discarded |
+| **Spec-anchored** | The spec is kept after the task, used for evolution and maintenance over time |
+| **Spec-as-source** | The spec is the *only* human-edited artifact; code is fully AI-generated and regenerable |
 
-### Anti-Patterns to Avoid
+Most current tools are spec-first. Not all define a maintenance strategy. The debate in the industry is whether code or the spec is the ultimate source of truth — and this is genuinely unresolved.
 
-- **Specification Theater** — writing specs no one reads or validates
+### What Actually Makes a Good Spec
+
+From Thoughtworks, GitHub, Scalable Path, Zencoder, and intent-driven.dev:
+
+- **Behavior-oriented, not implementation-oriented** — defines input/output, preconditions/postconditions, invariants, state transitions. Does NOT specify tech stack or implementation patterns.
+- **Domain-oriented ubiquitous language** — uses business terms, not tech terms
+- **Given/When/Then structure** for scenarios — still valid and recommended from BDD
+- **Completeness + conciseness** — covers the critical path without enumerating every possible edge case upfront
+- **Semi-structured** — mix of natural language and structured inputs/outputs. Machine-readable specs reduce hallucinations and improve AI reasoning significantly.
+- **Separation of concerns** — business requirement specs vs technical specs (though the boundary is often blurry in practice)
+
+### Spec for a Platform vs Spec for a Library — A Critical Distinction
+
+This matters a lot for us. `whenwords` is a *library* spec (pure functions, no state, no external dependencies, single interface). We are building a *platform* spec. These are fundamentally different:
+
+| Dimension | Library spec | Platform spec |
+|---|---|---|
+| Scope | Single interface, pure functions | Multi-component, stateful, distributed |
+| State | None — pure inputs/outputs | Database, sessions, storage, queues |
+| Interface | Function signatures + types | HTTP API contracts, request/response schemas, auth |
+| Concurrency | Not a concern | Race conditions, eventual consistency, ordering |
+| Evolution | Semver of a function surface | Backward compatibility, API versioning, migrations |
+| Cross-cutting | N/A | Auth, pagination, error formats, rate limits |
+| Architecture | Not specified | Must describe components and how they interact |
+
+A platform spec (per Zencoder and Martin Fowler articles) has five concerns a library spec doesn't:
+1. **Data schemas and invariants** — structure, constraints, validation rules
+2. **Interface contracts** — API capabilities, inputs/outputs, behavioral guarantees
+3. **Security boundaries** — identity, trust zones, policy enforcement  
+4. **Versioning semantics** — evolution, deprecation, migration
+5. **Compatibility rules** — backward and forward compatibility
+
+### The GitHub Spec-Kit Workflow (Most Applicable to Us)
+
+GitHub's Spec-Kit provides the most relevant SDD workflow for building a real product with AI agents:
+
+1. **Specify** — high-level description of *what* and *why*: user journeys, success criteria, outcomes. Not technical yet. Produces `spec.md`.
+2. **Plan** — technical: stack, architecture, constraints, integrations. Produces `plan.md`.
+3. **Tasks** — breaks spec + plan into small, independently implementable chunks with checkpoints. Produces `tasks.md`.
+4. **Implement** — agent tackles tasks one by one; human reviews focused changes, not 1000-line dumps.
+
+Key principle: **"Your role isn't just to steer. It's to verify."** At each phase, human reflects and refines before moving forward.
+
+The memory bank (called "constitution" in Spec-Kit, "steering" in Kiro) contains cross-cutting context that applies to every session: architecture principles, security rules, coding standards. This is separate from per-feature specs.
+
+### Kiro's Spec Structure (Most Prescriptive)
+
+Kiro uses exactly three documents per feature:
+- `requirements.md` — user stories in "As a… I want… So that…" format with Given/When/Then acceptance criteria
+- `design.md` — component architecture, data flow, data models, error handling, testing strategy
+- `tasks.md` — concrete tasks tracing back to requirement numbers, each small enough to validate independently
+
+### SDD Anti-Patterns
+
+- **Specification Theater** — writing specs no one reads or validates against
 - **Premature Comprehensiveness** — specifying everything upfront instead of iterating
-- **Tool Over-Reliance** — no tool compensates for poor decomposition
-- **Spec-Implementation Drift** — specs that diverge from reality become liabilities
-- **AI-Generated Spec Bloat** — accepting verbose AI output without human curation
+- **AI-Generated Spec Bloat** — accepting verbose AI-generated specs without human curation; if you're skimming it thinking "AI probably got it right," the feature is too large
+- **Spec-Implementation Drift** — specs that diverge from code become liabilities, not assets
+- **Vague boundaries** — specs that bleed into implementation details lose their value as behavioral contracts
 
-### SDD + AI Agents
+### Key Takeaway for Our Use Case
 
-SDD is particularly powerful with AI coding agents because:
-- Clear specs provide **design boundaries** that keep agents aligned
-- Well-defined specs enable **parallel work streams** (frontend + backend + integrations simultaneously)
-- Specs prevent "vibe coding" where agents optimize for speed over correctness
-- Human role shifts from *writing code* to *ensuring specs capture genuine intent*
+We are writing a **spec-anchored platform spec** — the spec is meant to be kept, evolved, and used to drive implementations over time. It is not a `whenwords`-style "spec as product" where the spec *is* the library. Our spec describes a platform that will be implemented, and the spec will be maintained as the system evolves.
 
-### Structure of a Good Spec (from `whenwords`)
-
-```
-1. Overview          — what the library/system does in 2-3 sentences
-2. Design Principles — philosophy, non-negotiables (e.g., pure functions only)
-3. Output Structure  — what files to generate; what NOT to generate
-4. Type Conventions  — abstract types that work across languages
-5. Error Handling    — by function, by language idiom
-6. Core Behavior     — each function: signature, arguments, behavior table, edge cases
-7. Testing           — test data format, how to use tests, input field mapping, examples
-```
+This means:
+- We need a **constitution / memory bank** — cross-cutting principles that apply everywhere (auth, pagination, error formats)
+- We need **component-level specs** — each major subsystem gets its own behavioral specification
+- We need an **API contract** — HTTP endpoints, schemas, request/response format
+- We need **acceptance criteria** per feature — testable Given/When/Then scenarios
+- We do NOT need `tests.yaml`-style language-agnostic test pairs (those are for library functions, not stateful APIs)
 
 ---
 
 ## Part 2: AI Observability Platforms
 
-### Why AI Observability Is Different from Traditional Observability
+### Why AI Observability Is Different
 
-Traditional observability asks: **"Is it up?"** (metrics, logs, latency, error rates)
+Traditional observability asks: **"Is it up?"** — metrics, latency, error rates, uptime.
 
-AI observability asks: **"Is it good?"** An LLM app can return HTTP 200 with a completely wrong, harmful, or hallucinated answer. Standard dashboards show green while the product is broken.
+AI observability asks: **"Is it good?"** An LLM app can return HTTP 200 while delivering a wrong, harmful, or hallucinated answer. Standard dashboards show green while the product is broken.
 
-Key differences:
-- AI systems are **probabilistic** — same input, different outputs
-- Spans are **huge** — average AI span is ~50KB vs ~900 bytes in traditional tracing
-- **Quality depends on** prompts, model versions, retrieval, tools, context length, training data
-- Non-technical stakeholders (PMs, domain experts) need to participate in quality review
+Key differences from traditional observability:
+- AI systems are **probabilistic** — same input, different outputs across runs
+- Spans are **massive** — average AI span ~50KB vs ~900 bytes in traditional tracing; complex agent runs can produce 10GB+ traces
+- Quality depends on **prompts, model version, retrieval, tools, context length, training data** — none of which show up in latency metrics
+- **Non-technical stakeholders** (PMs, domain experts, users) need to participate in quality review — this is rare in traditional observability
 
-### The Three Pillars of AI Observability (Braintrust's Framework)
+### The Three Pillars (Braintrust's Framework)
+
+Braintrust identified that the traditional three pillars (metrics, logs, traces) don't map onto AI well. Their three AI-specific pillars:
 
 #### Pillar 1: Traces
-Reconstruct the full decision path for a request — model calls, tools, retrieval, control flow.
+Reconstruct the **full decision path** for a request — every model call, tool invocation, retrieval step, and control flow operation.
 
-- Records each operation as a **span** (input, output, latency, token usage, model params, errors)
-- Spans form a parent-child tree = one **trace** per request
-- Used to debug: "which retrieved docs were bad? what prompt was sent? which step caused the failure?"
-- Requires purpose-built infrastructure — traditional APM backends break on 10GB+ traces
-- **OpenTelemetry** (with GenAI Semantic Conventions) is the emerging standard
+- Each operation = a **span** (id, parent_id, input, output, latency, token usage, model params, error)
+- Spans form a parent-child tree = one **trace** per user request
+- Primary use: not performance profiling (as in traditional tracing), but **understanding what actually happened** — which docs were retrieved, what prompt was built, which step caused a bad response
+- Requires purpose-built storage — traditional APM tools break at 10GB+ traces
+- **OpenTelemetry** with GenAI Semantic Conventions is the emerging standard for instrumentation
 
 #### Pillar 2: Evals
-Systematically measure output quality — both in development and production.
+Systematically measure output quality — both before deployment and in production.
 
-**Offline evals (pre-production):**
-- Run against curated datasets of representative inputs + expected outputs
-- Act as regression tests for prompt/model/retrieval changes
-- Block deploys that fail quality thresholds
+**Offline evals** (pre-production):
+- Run the application against curated datasets of inputs + expected outputs
+- Automated scorers check quality criteria (factual accuracy, relevance, safety, etc.)
+- Act as regression tests: prompt/model/retrieval changes run through evals before shipping
+- Can block deploys that fail quality thresholds
 
-**Online evals (production):**
-- Score live traffic as it happens
-- Surface failure patterns that don't appear in test datasets
-- Feed real failure cases back into offline datasets → the eval feedback loop
+**Online evals** (production):
+- Score live traffic as it happens, without adding user-visible latency
+- Surface failure patterns that test datasets don't cover (real users are unpredictable)
+- Feed failure cases back into offline datasets → the **eval feedback loop**
 
 **Scoring methods:**
-- **LLM-as-a-judge** — one model scores another's output against criteria
-- **Rule-based** — format validation, pattern matching, keyword detection
-- **Human review** — expert judgment for edge cases and calibrating automated scores
+- **LLM-as-a-judge** — one model evaluates another's output against a rubric
+- **Rule-based** — exact match, contains, regex, format validation
+- **Human review** — expert judgment for edge cases; calibrates automated scores
+
+The eval lifecycle: online evals discover failure patterns → add failing cases to offline datasets → fix and verify in dev → ship → confirm improvement in production.
 
 #### Pillar 3: Annotation
-Create corrective signals to inject expertise and ground results in user expectations.
+Create **corrective signals** from humans to align AI behavior with actual intent.
 
-- Trace viewer enables PMs / domain experts / users to flag issues and correct outputs
-- Annotations are mutable metadata on traces
-- Curated annotations flow into **datasets** for offline evaluation
-- Replaces "golden dataset" with continuous "dataset reconciliation" — frequent incremental updates
+- Humans (PMs, domain experts, users) review traces, flag problems, correct outputs
+- Annotations are mutable metadata attached to traces/spans
+- Annotations flow into **datasets** for offline eval
+- Enables "dataset reconciliation" — continuously updating datasets to reflect real-world behavior, rather than a one-time "golden dataset"
+- Requires a UI that non-technical users can operate without reading JSON
 
-### Core Feature Set (What a Platform Needs)
+### Core Feature Set
 
-| Feature | Description |
-|---|---|
-| **Tracing** | Capture full request execution: model calls, tool invocations, retrieval steps, with inputs/outputs/latency/tokens per span |
-| **Datasets** | Versioned collections of input/output pairs used for evals; built from annotated traces |
-| **Experiments / Evals** | Run application against a dataset; score outputs; compare runs across prompt/model changes |
-| **Scoring** | LLM-as-judge, rule-based, and human scorers; produce numeric or categorical scores |
-| **Prompt Management** | Version-controlled prompt storage; test prompts against datasets before deploying |
-| **Annotation** | Human review workflow on traces; flag, correct, save to datasets |
-| **Monitoring / Dashboards** | Aggregate metrics over time: quality scores, latency, cost, error rates |
-| **Playground** | Interactive testing of prompts + models before committing to code |
-| **Online Evals** | Auto-score live production traffic; surface regression patterns |
-
-### Lightweight / Open-Source Alternatives to Braintrust
-
-| Tool | Approach | Key Differentiator |
+| Feature | Description | Priority |
 |---|---|---|
-| **Braintrust** | Hosted + self-hostable | Full-featured; purpose-built Brainstore DB; 80x faster than data warehouses |
-| **Arize Phoenix** | Open source | Popular Braintrust OSS alternative; strong tracing + eval; friction-free self-hosting |
-| **OpenLIT** | Open source | OpenTelemetry-native; integrates 50+ LLM providers; Kubernetes operator |
-| **Evidently** | Open source | 100+ pre-made metrics; strong ML monitoring heritage; CI/CD integration |
-| **Langfuse** | Open source + hosted | Strong prompt management + tracing; popular in EU/self-host crowd |
+| **Tracing** | Capture full request execution: model calls, tool invocations, retrieval, with inputs/outputs/latency/tokens per span | Must have |
+| **Datasets** | Versioned collections of input/expected-output pairs; foundation for evals | Must have |
+| **Experiments / Evals** | Run app against a dataset, score outputs, compare runs across changes | Must have |
+| **Scoring** | LLM-as-judge, rule-based scorers; numeric or categorical outputs | Must have |
+| **Trace viewer** | UI to inspect individual traces and spans | Must have |
+| **Annotation** | Human review workflow on traces; flag + correct + save to datasets | Should have |
+| **Monitoring / Dashboards** | Aggregate quality scores, latency, cost, error rates over time | Should have |
+| **Prompt Management** | Version-controlled prompt storage + testing | Could have |
+| **Playground** | Interactive prompt + model testing | Could have |
+| **Online Evals** | Auto-score live production traffic | Could have |
 
-### What Makes a Platform "Lightweight"
+### The Open-Source Landscape
 
-Based on the landscape:
-- **Single deployable unit** — avoid microservices sprawl
-- **OpenTelemetry-native** — instrument once, route anywhere; no vendor lock-in
-- **Minimal schema** — traces, spans, scores, datasets — no proprietary abstractions
-- **Bring your own model for scoring** — don't force a specific judge LLM
-- **No mandatory cloud dependency** — local dev works out of the box
-- **SDK surface area is small** — `log_trace()`, `score()`, `run_eval()` covers 80% of use cases
+| Tool | Model | Key Differentiator |
+|---|---|---|
+| **Braintrust** | Hosted + self-hostable | Full-featured; Brainstore DB purpose-built for AI trace scale; annotation UI; hybrid deploy |
+| **Arize Phoenix** | Open source | Best-known OSS alternative; strong tracing + eval; self-hosting with no friction |
+| **OpenLIT** | Open source | OpenTelemetry-native from the start; 50+ LLM provider integrations; Kubernetes operator |
+| **Langfuse** | Open source + hosted | Strong prompt management + tracing; popular for self-hosters in Europe |
+| **Evidently** | Open source | 100+ pre-made metrics; ML monitoring heritage; strong CI/CD integration |
+
+### What "Lightweight" Actually Means
+
+From the landscape research, lightweight platforms share these traits:
+- **Single deployable binary or minimal compose file** — no mandatory microservices architecture
+- **OpenTelemetry-native instrumentation** — instrument once, no vendor lock-in
+- **No proprietary abstractions** — traces, spans, scores, datasets map to well-understood concepts
+- **Bring your own scorer model** — don't force a specific LLM for judging
+- **Local-first dev experience** — works without cloud credentials or accounts
+- **Small SDK footprint** — a few functions cover 90% of use cases
 
 ---
 
-## Part 3: Key Takeaways for Our Spec
+## Part 3: Implications for Our Spec
 
-### What SDD Tells Us About Writing This Spec
+### On Methodology
 
-1. The spec should be **the product** — implementations in any language/framework should be derivable from it
-2. Include **language-agnostic test cases** (like `tests.yaml`) so the spec is verifiable
-3. **Pure interfaces** — specify behavior, not implementation details
-4. **Minimal surface area** — YAGNI ruthlessly; no feature unless it has a clear use case
-5. The spec itself should be **decomposed into independently specifiable sections** (tracing, evals, datasets, etc.)
+We are building a **spec-anchored platform spec** following the GitHub Spec-Kit / Kiro model:
+- The spec is a **living document** that evolves with the platform
+- We need a **constitution** (cross-cutting principles applied everywhere)
+- Each subsystem gets its own **behavioral spec** (not just a schema dump)
+- We need **acceptance criteria** per feature in testable form
 
-### What AI Observability Research Tells Us About Scope
+We are **not** building a `whenwords`-style spec. `whenwords` works because it specifies pure functions with deterministic inputs/outputs in a stateless library. A platform has state, HTTP APIs, storage, auth, and multi-step workflows — these require different spec artifacts.
 
-The minimal viable platform needs:
-1. **Tracing** (with OpenTelemetry alignment) — the foundation everything else builds on
-2. **Datasets** — without these, evals have nothing to run against
-3. **Evals / Experiments** — the core value proposition; offline first
-4. **Scoring** — at least one scorer type (LLM-as-judge is highest leverage)
-5. **UI for trace viewing + annotation** — enables the human feedback loop
+### On Scope
 
-Nice-to-have (defer):
-- Online evals (complex; requires production traffic routing)
-- Prompt management (useful but separable)
-- Playground (useful but separable)
-- GPU monitoring, Kubernetes operator, etc.
+The minimum viable spec covers:
+1. **Tracing** — the foundation; nothing else works without it
+2. **Datasets** — required by evals to have something to run against
+3. **Experiments/Evals** — the core value proposition
+4. **Scoring** — the mechanism that makes evals meaningful
+5. **Annotation + trace viewer** — closes the human feedback loop
+
+Explicitly out of scope for v1:
+- Online evals (live production scoring — complex, needs traffic routing)
+- Prompt management (separable, not core to observability)
+- Playground (separable)
+- GPU monitoring, Kubernetes operator
+- Multi-tenancy, SSO, billing
