@@ -35,6 +35,7 @@ The spec defines what the platform must *do* — behaviors, contracts, and accep
 - Scoring (exact match, contains, regex, LLM-as-judge, human, custom)
 - Annotation (human review workflow, trace → dataset conversion)
 - HTTP API contract (all endpoints, request/response shapes, error codes)
+- UI (developer view + cross-functional review queue)
 
 **Out of scope for v1** (see `CONSTITUTION.md` for full list):
 Online evals, prompt management, playground, GPU monitoring, multi-tenancy, SSO, billing, webhooks.
@@ -60,6 +61,8 @@ Read in this order — each document builds on the previous:
 7. **[`specs/05-annotation.md`](./specs/05-annotation.md)** — Annotation: human review workflow, immutability rules, conversion to dataset items, UI contract.
 
 8. **[`specs/06-api.md`](./specs/06-api.md)** — Full HTTP API contract: every endpoint, request/response schemas, error codes.
+
+9. **[`specs/07-ui.md`](./specs/07-ui.md)** — UI spec: developer view (dashboard, traces, experiments, datasets) and reviewer queue (annotation panel, rendering contract).
 
 ---
 
@@ -101,7 +104,8 @@ ai-observability-spec/
 │   ├── 03-experiments.md
 │   ├── 04-scoring.md
 │   ├── 05-annotation.md
-│   └── 06-api.md
+│   ├── 06-api.md
+│   └── 07-ui.md
 └── docs/
     ├── research/
     │   └── findings.md    ← Research notes: SDD methodology + AI observability landscape

@@ -640,6 +640,145 @@ Convert an annotation into a DatasetItem.
 
 ---
 
+## Review Queue
+
+### `POST /v1/traces/:id/queue`
+
+Add a trace to the review queue, making it visible in the reviewer's annotation feed.
+
+**Request body:** empty (`{}`)
+
+**Response `200 OK`:**
+
+```json
+{
+  "trace_id": "trace-abc",
+  "queued": true,
+  "queued_at": "2026-02-21T22:00:00.000Z"
+}
+```
+
+If the trace is already in the queue, returns `200` with the original `queued_at` timestamp (idempotent — not a `409`).
+
+**Error codes:** `NOT_FOUND`
+
+---
+
+### `DELETE /v1/traces/:id/queue`
+
+Remove a trace from the review queue.
+
+**Response `200 OK`:**
+
+```json
+{ "trace_id": "trace-abc", "queued": false }
+```
+
+If the trace was not in the queue, returns `200` (idempotent).
+
+**Error codes:** `NOT_FOUND`
+
+---
+
+### `GET /v1/queue`
+
+List traces currently in the review queue for a project.
+
+**Query parameters:**
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `project_id` | string | yes | Project to query |
+| `status` | string | no | Filter by annotation status: `pending` (no annotations yet) or `annotated` (at least one annotation). Omit for all. |
+| `cursor` | string | no | |
+| `limit` | integer | no | Default 50, max 200 |
+
+**Response `200 OK`:**
+
+```json
+{
+  "items": [
+    {
+      "trace_id": "trace-abc",
+      "queued_at": "2026-02-21T22:00:00.000Z",
+      "status": "pending",
+      "annotation_count": 0,
+      "root_span": {
+        "id": "span-root",
+        "name": "handle_user_query",
+        "input": "What is the capital of France?",
+        "output": "The capital of France is Lyon.",
+        "duration_ms": 1240
+      }
+    }
+  ],
+  "next_cursor": null,
+  "limit": 50
+}
+```
+
+`root_span` contains a lightweight projection of the root span — only the fields needed to render the queue card. Full span detail is available via `GET /v1/traces/:id`.
+
+**Error codes:** `PROJECT_REQUIRED`
+
+---
+
+## Project Summary
+
+### `GET /v1/projects/:id/summary`
+
+Returns aggregate health metrics for a project. Powers the Dashboard view.
+
+**Response `200 OK`:**
+
+```json
+{
+  "project_id": "proj-1",
+  "traces": {
+    "last_24h": {
+      "count": 142,
+      "error_count": 12,
+      "error_rate": 0.085,
+      "avg_duration_ms": 1840
+    },
+    "last_7d": {
+      "count": 891,
+      "error_count": 67,
+      "error_rate": 0.075,
+      "avg_duration_ms": 1920
+    }
+  },
+  "experiments": {
+    "created_count": 2,
+    "running_count": 1,
+    "completed_count": 8,
+    "most_recent_completed": {
+      "id": "exp-7",
+      "name": "gpt-4o-prompt-v3",
+      "completed_at": "2026-02-21T18:00:00.000Z",
+      "mean_scores": {
+        "exact_match": 0.82,
+        "llm_judge_grounding": 0.91
+      }
+    }
+  },
+  "queue": {
+    "pending_count": 14,
+    "annotated_count": 6
+  }
+}
+```
+
+**Notes:**
+- `error_rate` is `error_count / count`, rounded to 3 decimal places. `0` if `count` is 0.
+- `avg_duration_ms` is the mean of all root span `duration_ms` values in the window. `null` if no traces have a root span with a duration.
+- `most_recent_completed` is `null` if no experiments are completed.
+- `mean_scores` in `most_recent_completed` only includes scorers that have at least one scored run.
+
+**Error codes:** `NOT_FOUND` (project does not exist)
+
+---
+
 ## Error Code Reference
 
 Complete list of all error codes used across the API:
@@ -665,3 +804,4 @@ Complete list of all error codes used across the API:
 | `EMPTY_ANNOTATION` | 400 | specs/05-annotation.md |
 | `INVALID_ANNOTATION_SCOPE` | 422 | specs/05-annotation.md |
 | `NO_ROOT_SPAN` | 422 | specs/05-annotation.md |
+| `INVALID_QUEUE_STATUS` | 400 | specs/07-ui.md (queue status filter value not `pending` or `annotated`) |
