@@ -46,23 +46,27 @@ Online evals, prompt management, playground, GPU monitoring, multi-tenancy, SSO,
 
 Read in this order — each document builds on the previous:
 
+0. **[`GLOSSARY.md`](./GLOSSARY.md)** — Plain-language definitions of every domain term (trace, span, dataset, experiment, score, annotation, and more). Read this first if any term feels unfamiliar.
+
 1. **[`CONSTITUTION.md`](./CONSTITUTION.md)** — Cross-cutting rules that apply everywhere: auth, error format, pagination, timestamps, IDs, API versioning, design principles.
 
 2. **[`DATA-MODEL.md`](./DATA-MODEL.md)** — Every core entity (Span, Trace, Dataset, DatasetItem, Experiment, ExperimentRun, Score, Annotation) with full field definitions and relationships.
 
-3. **[`specs/01-tracing.md`](./specs/01-tracing.md)** — Tracing behavior: span hierarchy, ingestion rules, OTel alignment, acceptance criteria.
+3. **[`specs/00-overview.md`](./specs/00-overview.md)** — The two core workflows (developer eval loop and reviewer annotation loop), how every subsystem connects, and a full data-flow diagram.
 
-4. **[`specs/02-datasets.md`](./specs/02-datasets.md)** — Dataset management: versioning, CRUD, bulk import, annotation conversion, reconciliation pattern.
+4. **[`specs/01-tracing.md`](./specs/01-tracing.md)** — Tracing behavior: span hierarchy, ingestion rules, OTel alignment, acceptance criteria.
 
-5. **[`specs/03-experiments.md`](./specs/03-experiments.md)** — Experiments: lifecycle, run submission, aggregate summary, comparison, threshold evaluation.
+5. **[`specs/02-datasets.md`](./specs/02-datasets.md)** — Dataset management: versioning, CRUD, bulk import, annotation conversion, reconciliation pattern.
 
-6. **[`specs/04-scoring.md`](./specs/04-scoring.md)** — Scorers: built-in (exact_match, contains, regex, llm_judge), human, custom, attachment methods.
+6. **[`specs/03-experiments.md`](./specs/03-experiments.md)** — Experiments: lifecycle, run submission, aggregate summary, comparison, threshold evaluation.
 
-7. **[`specs/05-annotation.md`](./specs/05-annotation.md)** — Annotation: human review workflow, immutability rules, conversion to dataset items.
+7. **[`specs/04-scoring.md`](./specs/04-scoring.md)** — Scorers: built-in (exact_match, contains, regex, llm_judge), human, custom, attachment methods.
 
-8. **[`specs/06-api.md`](./specs/06-api.md)** — Full HTTP API contract: every endpoint, request/response schemas, error codes.
+8. **[`specs/05-annotation.md`](./specs/05-annotation.md)** — Annotation: human review workflow, immutability rules, conversion to dataset items.
 
-9. **[`specs/07-ui.md`](./specs/07-ui.md)** — UI spec: developer view (dashboard, traces, experiments, datasets) and reviewer queue (annotation panel, rendering contract).
+9. **[`specs/06-api.md`](./specs/06-api.md)** — Full HTTP API contract: every endpoint, request/response schemas, error codes.
+
+10. **[`specs/07-ui.md`](./specs/07-ui.md)** — UI behavioral spec: developer view (dashboard, traces, experiments, datasets) and reviewer queue (annotation panel, rendering contract).
 
 ---
 
@@ -146,9 +150,11 @@ Each spec file contains an **Acceptance Criteria** section with `GIVEN / WHEN / 
 ai-observability-spec/
 ├── README.md              ← You are here
 ├── INSTALL.md             ← How to implement: prompts and step-by-step guide
+├── GLOSSARY.md            ← Plain-language definitions of all domain terms
 ├── CONSTITUTION.md        ← Cross-cutting rules (always include in context)
 ├── DATA-MODEL.md          ← Entity definitions (always include in context)
 ├── specs/
+│   ├── 00-overview.md     ← End-to-end workflows and subsystem connections
 │   ├── 01-tracing.md
 │   ├── 02-datasets.md
 │   ├── 03-experiments.md
